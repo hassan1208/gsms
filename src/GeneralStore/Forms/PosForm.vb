@@ -37,7 +37,10 @@ Public Class PosForm
         .Padding = New Padding(0, 0, 10, 0), .Margin = New Padding(0, 8, 0, 8)
     }
     Private ReadOnly cboPayment As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList}
-    Private ReadOnly txtCustomer As New TextBox()
+    Private ReadOnly txtCustomer As New TextBox With {
+        .AutoCompleteMode = AutoCompleteMode.SuggestAppend, .AutoCompleteSource = AutoCompleteSource.CustomSource
+    }
+    Private ReadOnly lblCustomerBalance As New Label With {.AutoSize = True, .ForeColor = Ui.WarningColor}
     Private ReadOnly numPaid As NumericUpDown = Ui.MakeNumber(2)
     Private ReadOnly lblChange As New Label With {.AutoSize = True, .Font = New Font("Segoe UI", 16.0F, FontStyle.Bold)}
     Private ReadOnly chkPrint As New CheckBox With {.Text = "Print receipt", .AutoSize = True}
@@ -130,6 +133,7 @@ Public Class PosForm
         summary.AddFull(lblTotal)
         summary.AddRow("Payment", cboPayment)
         summary.AddRow("Customer", txtCustomer)
+        summary.AddRow("", lblCustomerBalance)
         summary.AddRow("Cash Recv. (F7)", numPaid)
         summary.AddRow("Change", lblChange)
         summary.AddRow("", chkPrint)
@@ -182,6 +186,9 @@ Public Class PosForm
                                         End If
                                     End Sub
         AddHandler clockTimer.Tick, Sub() UpdateClock()
+        AddHandler txtCustomer.TextChanged, Sub() ShowCustomerBalance()
+        AddHandler cboPayment.SelectedIndexChanged, Sub() Recalculate()
+        LoadCustomerNames()
 
         ScannerInput.RedirectTypingTo(Me, txtScan)
         Recalculate()
@@ -424,6 +431,7 @@ Public Class PosForm
         numDiscount.Value = 0
         numPaid.Value = 0
         txtCustomer.Clear()
+        LoadCustomerNames()
         cboPayment.SelectedIndex = 0
         numQty.Value = 1
         lblLastItem.Text = "Scan a product to start the bill"
@@ -455,6 +463,9 @@ Public Class PosForm
         ElseIf paid >= t.Total Then
             lblChange.Text = AppSettings.Money(paid - t.Total)
             lblChange.ForeColor = Ui.SuccessColor
+        ElseIf IsCreditSale Then
+            lblChange.Text = "Udhaar " & AppSettings.Money(t.Total - paid)
+            lblChange.ForeColor = Ui.WarningColor
         Else
             lblChange.Text = "Short " & AppSettings.Money(t.Total - paid)
             lblChange.ForeColor = Ui.DangerColor
@@ -471,26 +482,38 @@ Public Class PosForm
         Dim t = Totals()
         Dim paid = Ui.TypedValue(numPaid)
         Dim method = cboPayment.Text
-        Dim isCredit = cboPayment.SelectedIndex = 3
+        Dim isCredit = IsCreditSale
+        Dim customerName = txtCustomer.Text.Trim()
+        Dim customerId = If(customerName = "", 0L, CustomerRepo.FindByName(customerName))
 
-        If isCredit AndAlso txtCustomer.Text.Trim() = "" Then
-            Ui.ShowError("Enter the customer name for a credit (udhaar) sale.")
-            txtCustomer.Focus()
-            Return
-        End If
-
-        ' No amount entered = customer paid the exact amount.
-        If paid <= 0 AndAlso Not isCredit Then paid = t.Total
-        If isCredit Then paid = t.Total
-        If paid < t.Total Then
-            Ui.ShowError($"Received amount is less than the total ({AppSettings.Money(t.Total)}).")
-            numPaid.Focus()
-            Return
+        If isCredit Then
+            ' Udhaar: the customer must be known; whatever is not paid now goes to their khata.
+            If customerName = "" Then
+                Ui.ShowError("Enter the customer name for a credit (udhaar) sale.")
+                txtCustomer.Focus()
+                Return
+            End If
+            If customerId = 0 Then
+                If Not Ui.Confirm($"'{customerName}' is a new customer.{vbCrLf}Create the customer's account (khata)?") Then
+                    txtCustomer.Focus()
+                    Return
+                End If
+                customerId = CustomerRepo.Save(0, customerName, "", "")
+            End If
+        Else
+            ' No amount entered = customer paid the exact amount.
+            If paid <= 0 Then paid = t.Total
+            If paid < t.Total Then
+                Ui.ShowError($"Received amount is less than the total ({AppSettings.Money(t.Total)}).{vbCrLf}" &
+                             "Choose payment 'Credit (Udhaar)' to put the rest on the customer's account.")
+                numPaid.Focus()
+                Return
+            End If
         End If
 
         Dim result As (Id As Long, InvoiceNo As String)
         Try
-            result = SalesService.SaveSale(cart.ToList(), t.Discount, paid, method, txtCustomer.Text)
+            result = SalesService.SaveSale(cart.ToList(), t.Discount, paid, method, customerName, customerId)
         Catch ex As Exception
             Ui.ShowError("Sale could not be saved: " & ex.Message)
             Return
@@ -499,13 +522,49 @@ Public Class PosForm
         lastSaleId = result.Id
         If chkPrint.Checked Then ReceiptPrinter.PrintSale(result.Id, owner:=Me)
 
-        Dim change = paid - t.Total
+        Dim change = Math.Max(0D, paid - t.Total)
+        Dim due = Math.Max(0D, t.Total - paid)
         ResetSale()
-        SetStatus($"Sale saved: {result.InvoiceNo}   Total {AppSettings.Money(t.Total)}   Change {AppSettings.Money(change)}")
-        lblLastItem.Text = $"CHANGE TO RETURN:  {AppSettings.Money(change)}"
-        MessageBox.Show(Me, $"Invoice: {result.InvoiceNo}{vbCrLf}{vbCrLf}Total:   {AppSettings.Money(t.Total)}{vbCrLf}Received:   {AppSettings.Money(paid)}{vbCrLf}{vbCrLf}CHANGE:   {AppSettings.Money(change)}",
-                        "Sale Completed", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        Dim message = $"Invoice: {result.InvoiceNo}{vbCrLf}{vbCrLf}Total:   {AppSettings.Money(t.Total)}{vbCrLf}Received:   {AppSettings.Money(paid)}{vbCrLf}{vbCrLf}"
+        If due > 0 Then
+            Dim balance = CustomerRepo.Balance(customerId)
+            SetStatus($"Sale saved: {result.InvoiceNo}   Udhaar {AppSettings.Money(due)} added to {customerName}")
+            lblLastItem.Text = $"UDHAAR: {AppSettings.Money(due)}   ({customerName} total balance {AppSettings.Money(balance)})"
+            message &= $"UDHAAR (credit):   {AppSettings.Money(due)}{vbCrLf}{customerName} total balance:   {AppSettings.Money(balance)}"
+        Else
+            SetStatus($"Sale saved: {result.InvoiceNo}   Total {AppSettings.Money(t.Total)}   Change {AppSettings.Money(change)}")
+            lblLastItem.Text = $"CHANGE TO RETURN:  {AppSettings.Money(change)}"
+            message &= $"CHANGE:   {AppSettings.Money(change)}"
+        End If
+        MessageBox.Show(Me, message, "Sale Completed", MessageBoxButtons.OK, MessageBoxIcon.Information)
         FocusScan()
+    End Sub
+
+    Private ReadOnly Property IsCreditSale As Boolean
+        Get
+            Return cboPayment.SelectedIndex = 3
+        End Get
+    End Property
+
+    Private Sub LoadCustomerNames()
+        Try
+            Dim names As New AutoCompleteStringCollection()
+            names.AddRange(CustomerRepo.Names())
+            txtCustomer.AutoCompleteCustomSource = names
+        Catch ex As Exception
+            ' Autocomplete is a convenience only.
+        End Try
+    End Sub
+
+    Private Sub ShowCustomerBalance()
+        Dim name = txtCustomer.Text.Trim()
+        Dim id = If(name = "", 0L, CustomerRepo.FindByName(name))
+        If id = 0 Then
+            lblCustomerBalance.Text = If(name = "", "", "New customer")
+            Return
+        End If
+        Dim balance = CustomerRepo.Balance(id)
+        lblCustomerBalance.Text = If(balance > 0, "Previous udhaar: " & AppSettings.Money(balance), "No udhaar pending")
     End Sub
 
     Private Sub ReprintLast()

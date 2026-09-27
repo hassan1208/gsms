@@ -37,7 +37,7 @@ Public Module ReceiptPrinter
 
         ' 80mm roll: ~3 inch printable width; height grows with the number of items.
         Dim footerLines = AppSettings.GetValue("receipt_footer").Split(ControlChars.Lf).Length
-        Dim height = 470 + items.Rows.Count * 34 + footerLines * 14
+        Dim height = 500 + items.Rows.Count * 34 + footerLines * 14
         doc.DefaultPageSettings.PaperSize = New PaperSize("Receipt 80mm", 300, height)
         doc.DefaultPageSettings.Margins = New Margins(8, 8, 8, 8)
         AddHandler doc.PrintPage, Sub(s, e) DrawReceipt(e.Graphics, e.MarginBounds, sale, items)
@@ -107,7 +107,16 @@ Public Module ReceiptPrinter
             leftRight("TOTAL", AppSettings.Money(Ui.ToDec(sale("total"))), fTotal)
             y += 2
             leftRight("Paid (" & Ui.ToStr(sale("payment_method")) & ")", AppSettings.Money(Ui.ToDec(sale("paid"))), fNormal)
-            leftRight("Change", AppSettings.Money(Ui.ToDec(sale("change_due"))), fBold)
+            Dim due = Ui.ToDec(sale("due"))
+            If due > 0 Then
+                leftRight("UDHAAR (this bill)", AppSettings.Money(due), fBold)
+                Dim customerId = Ui.ToLng(sale("customer_id"))
+                If customerId <> 0 Then
+                    leftRight("Total balance now", AppSettings.Money(CustomerRepo.Balance(customerId)), fBold)
+                End If
+            Else
+                leftRight("Change", AppSettings.Money(Ui.ToDec(sale("change_due"))), fBold)
+            End If
             separator()
 
             ' Invoice barcode: scan it in Sales Reports to find this bill again.

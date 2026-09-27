@@ -35,7 +35,23 @@ Public Module Db
         }.ToString()
 
         CreateSchema()
+        Migrate()
         SeedData()
+    End Sub
+
+    ''' <summary>Adds columns introduced after the first release to existing databases.</summary>
+    Private Sub Migrate()
+        AddColumnIfMissing("sales", "customer_id", "INTEGER REFERENCES customers(id)")
+        AddColumnIfMissing("sales", "due", "REAL NOT NULL DEFAULT 0")
+        Execute("CREATE INDEX IF NOT EXISTS ix_sales_customer ON sales(customer_id)")
+    End Sub
+
+    Private Sub AddColumnIfMissing(table As String, column As String, definition As String)
+        Dim cols = Query($"PRAGMA table_info({table})")
+        For Each r As DataRow In cols.Rows
+            If String.Equals(Ui.ToStr(r("name")), column, StringComparison.OrdinalIgnoreCase) Then Return
+        Next
+        Execute($"ALTER TABLE {table} ADD COLUMN {column} {definition}")
     End Sub
 
     Public Function Open() As SqliteConnection
@@ -250,6 +266,24 @@ CREATE TABLE IF NOT EXISTS sale_items (
 );
 CREATE INDEX IF NOT EXISTS ix_sale_items_sale ON sale_items(sale_id);
 
+CREATE TABLE IF NOT EXISTS customers (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    phone      TEXT,
+    address    TEXT,
+    created_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS customer_payments (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL REFERENCES customers(id),
+    amount      REAL NOT NULL,
+    note        TEXT,
+    user_id     INTEGER REFERENCES users(id),
+    created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_customer_payments_customer ON customer_payments(customer_id);
+
 CREATE TABLE IF NOT EXISTS stock_in (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     product_id INTEGER NOT NULL REFERENCES products(id),
@@ -338,6 +372,7 @@ CREATE TABLE IF NOT EXISTS stock_in (
         End Using
         SqliteConnection.ClearAllPools()
         CreateSchema()
+        Migrate()
         AppSettings.ClearCache()
     End Sub
 

@@ -45,6 +45,7 @@ Public Class SalesReportForm
         Ui.AddColumn(gridInvoices, "sub_total", "Sub Total", "N2", 75, True)
         Ui.AddColumn(gridInvoices, "discount", "Discount", "N2", 70, True)
         Ui.AddColumn(gridInvoices, "total", "Total", "N2", 80, True)
+        Ui.AddColumn(gridInvoices, "due", "Udhaar", "N2", 70, True)
         Ui.AddColumn(gridInvoices, "payment_method", "Payment", fillWeight:=80)
 
         Ui.StyleGrid(gridItems)
@@ -177,7 +178,7 @@ Public Class SalesReportForm
     Private Const InvoiceSql As String =
         "SELECT s.id, s.invoice_no, s.sale_date, COALESCE(u.full_name, u.username, '') AS cashier, s.customer_name,
                 (SELECT COUNT(*) FROM sale_items si WHERE si.sale_id = s.id) AS item_count,
-                s.sub_total, s.discount, s.total, s.payment_method
+                s.sub_total, s.discount, s.total, s.due, s.payment_method
          FROM sales s LEFT JOIN users u ON u.id = s.user_id "
 
     Private Sub LoadInvoices()
@@ -199,6 +200,7 @@ Public Class SalesReportForm
             $"Net Sales: {AppSettings.Money(s.Net)}"
         }
         If Session.IsAdmin Then parts.Add($"Profit: {AppSettings.Money(s.Profit)}")
+        If s.Due > 0 Then parts.Add($"Udhaar given: {AppSettings.Money(s.Due)}")
         For Each r As DataRow In methods.Rows
             parts.Add($"{Ui.ToStr(r("payment_method"))}: {AppSettings.Money(Ui.ToDec(r("amount")))}")
         Next

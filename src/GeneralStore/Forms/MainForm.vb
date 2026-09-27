@@ -14,6 +14,7 @@ Public Class MainForm
     Private ReadOnly lblProfitToday As Label
     Private ReadOnly lblProducts As Label
     Private ReadOnly lblLowStock As Label
+    Private ReadOnly lblUdhaar As Label
     Private ReadOnly lblClock As New Label With {
         .Dock = DockStyle.Right, .Width = 460, .ForeColor = Color.White,
         .TextAlign = ContentAlignment.MiddleRight, .Padding = New Padding(0, 0, 16, 0)
@@ -45,6 +46,7 @@ Public Class MainForm
         AddMenuButton(menu, "Products               F2", AddressOf OpenProducts)
         AddMenuButton(menu, "Stock In (Purchase)  F3", AddressOf OpenStockIn)
         AddMenuButton(menu, "Sales Reports        F4", AddressOf OpenReports)
+        AddMenuButton(menu, "Customers / Udhaar  F6", AddressOf OpenCustomers)
         If Session.IsAdmin Then
             AddMenuButton(menu, "Categories", AddressOf OpenCategories)
             AddMenuButton(menu, "Users", AddressOf OpenUsers)
@@ -62,6 +64,7 @@ Public Class MainForm
         lblProfitToday = AddTile(tiles, "Today's Profit", Color.FromArgb(142, 68, 173))
         lblProducts = AddTile(tiles, "Total Products", Ui.PrimaryColor)
         lblLowStock = AddTile(tiles, "Low Stock Items", Ui.DangerColor)
+        lblUdhaar = AddTile(tiles, "Udhaar Outstanding", Ui.WarningColor)
         lblProfitToday.Parent.Visible = Session.IsAdmin
 
         Ui.StyleGrid(gridLow)
@@ -142,6 +145,7 @@ Public Class MainForm
             Case Keys.F3 : OpenStockIn()
             Case Keys.F4 : OpenReports()
             Case Keys.F5 : RefreshDashboard()
+            Case Keys.F6 : OpenCustomers()
             Case Else : Return
         End Select
         e.Handled = True
@@ -171,6 +175,7 @@ Public Class MainForm
             Dim low = Db.Query("SELECT barcode, name, stock, reorder_level FROM products
                                 WHERE is_active = 1 AND stock <= reorder_level ORDER BY stock, name LIMIT 200")
             lblLowStock.Text = low.Rows.Count.ToString("N0")
+            lblUdhaar.Text = AppSettings.Money(CustomerRepo.TotalOutstanding())
             gridLow.DataSource = low
 
             gridRecent.DataSource = Db.Query("SELECT s.invoice_no, s.sale_date, COALESCE(u.full_name, u.username, '') AS cashier, s.total
@@ -202,6 +207,10 @@ Public Class MainForm
 
     Private Sub OpenReports()
         ShowChild(New SalesReportForm())
+    End Sub
+
+    Private Sub OpenCustomers()
+        ShowChild(New CustomersForm())
     End Sub
 
     Private Sub OpenCategories()

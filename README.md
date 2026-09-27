@@ -12,6 +12,7 @@ General store / kiryana store ke liye Windows desktop app. **VB.NET (WinForms, .
 | **Products** | Add / edit / delete, category, unit (pcs, kg, ltr...), cost aur sale price, stock, reorder level |
 | **Barcode generator** | Jin items par barcode nahi (loose items), un ke liye 13-digit barcode khud generate karta hai (EAN-13 check digit ke sath) |
 | **Barcode labels** | A4 sticker sheet (3x8) ya label printer (50x25mm) par stickers print karta hai, price aur store name ke sath |
+| **Customers / Udhaar** | Customer ka khata: udhaar par sale (poori ya kuch raqam le kar), baad mein payment receive, har customer ka balance aur ledger (running balance ke sath) |
 | **Stock In** | Supplier ka maal scan karke stock mein add karo. Naya barcode aaye to wahin se product ban jata hai |
 | **Reports** | Date-wise invoices, product-wise sale, profit, stock value, low stock, CSV export, receipt reprint, sale void/return |
 | **Settings** | Store name, address, phone, currency, receipt footer, printers, backup / restore |
@@ -43,7 +44,15 @@ Koi bhi aam **USB ya Bluetooth barcode scanner** chalega. Koi driver ya extra so
 | Ctrl+P | Last receipt reprint |
 | Esc | Close |
 
-Main screen par: F1 POS, F2 Products, F3 Stock In, F4 Reports.
+Main screen par: F1 POS, F2 Products, F3 Stock In, F4 Reports, F6 Customers / Udhaar.
+
+## Udhaar (credit) kaise dein
+
+1. POS mein bill banao, **Payment** mein `Credit (Udhaar)` chuno.
+2. **Customer** mein naam likho (purane customers ka naam khud suggest hota hai aur un ka pichla udhaar bhi dikhta hai). Naya naam ho to app khata banane ka poochti hai.
+3. Customer abhi kuch raqam de raha ho to **Cash Recv.** mein likh do, warna khali chhor do. Baqi raqam customer ke khate mein chali jati hai.
+4. Receipt par "UDHAAR (this bill)" aur customer ka total balance print hota hai.
+5. Payment wapas milne par **Customers / Udhaar** screen mein customer select karke **Receive Payment** karo. **Khata / Ledger** mein poori history running balance ke sath milti hai.
 
 ## Requirements
 
@@ -67,7 +76,9 @@ Pehli dafa chalane par kuch sample categories aur products khud add ho jate hain
 
 ## Setup / EXE banana
 
-Ek single `GeneralStore.exe` banane ke liye jo .NET install kiye baghair chale:
+**Sab se aasaan tareeqa:** GitHub par repo ke **Actions** tab mein **Build** workflow kholo. Har push par yeh Windows par project build karta hai. Aakhri successful run ke neeche **GeneralStore-win-x64** artifact download karo. Us ke andar `GeneralStore.exe` hai jo .NET install kiye baghair chalti hai.
+
+Ya khud banana ho to:
 
 ```bat
 cd src\GeneralStore
@@ -97,9 +108,9 @@ src/GeneralStore/
   Core/Ui.vb              Common styling aur helpers
   Barcode/Code128.vb      Barcode image generator (Code 128)
   Barcode/BarcodeHelper.vb EAN-13 barcode numbers, scanner input helper
-  Services/StoreServices.vb Sale save, stock in, void, reports
+  Services/StoreServices.vb Sale save, stock in, void, reports, customers / udhaar
   Printing/Printing.vb    Receipt aur barcode label printing
-  Forms/                  Saari screens (Login, Main, POS, Products, Stock In, Reports, Users, Settings)
+  Forms/                  Saari screens (Login, Main, POS, Products, Stock In, Customers, Reports, Users, Settings)
 ```
 
 Screens code se bani hain (designer files nahi hain), is liye Visual Studio mein yeh code view mein khulti hain.
@@ -108,4 +119,4 @@ Screens code se bani hain (designer files nahi hain), is liye Visual Studio mein
 
 ### English summary
 
-A desktop General Store Management System written in VB.NET (WinForms, .NET 8) with a SQLite database. It includes POS billing driven by a barcode scanner (any USB/Bluetooth scanner in keyboard mode), products and categories, barcode generation and label printing (Code 128, with EAN-13 numbers for in-store items), stock receiving, sales, profit and stock reports with CSV export, receipt printing, Admin/Cashier users, and backup/restore. Open `GeneralStore.sln` in Visual Studio 2022 and press F5. The default login is `admin` / `admin123`.
+A desktop General Store Management System written in VB.NET (WinForms, .NET 8) with a SQLite database. It includes POS billing driven by a barcode scanner (any USB/Bluetooth scanner in keyboard mode), products and categories, barcode generation and label printing (Code 128, with EAN-13 numbers for in-store items), stock receiving, customer credit (udhaar) accounts with ledgers, sales, profit and stock reports with CSV export, receipt printing, Admin/Cashier users, and backup/restore. Open `GeneralStore.sln` in Visual Studio 2022 and press F5. The default login is `admin` / `admin123`.
