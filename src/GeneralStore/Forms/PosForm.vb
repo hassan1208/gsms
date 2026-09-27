@@ -48,6 +48,7 @@ Public Class PosForm
     Private ReadOnly lblClock As New Label With {.Dock = DockStyle.Right, .Width = 420, .ForeColor = Color.White, .TextAlign = ContentAlignment.MiddleRight, .Padding = New Padding(0, 0, 14, 0)}
 
     Private lastSaleId As Long
+    Private cameraForm As CameraScanForm
 
     Public Sub New()
         Ui.SetupForm(Me, "Point of Sale - " & AppSettings.StoreName, 1250, 740)
@@ -65,6 +66,7 @@ Public Class PosForm
         numQty.Margin = New Padding(4, 8, 4, 4)
         Dim btnAdd = Ui.MakeButton("Add", Ui.SuccessColor, 80, 40)
         Dim btnSearch = Ui.MakeButton("Search Item (F3)", Ui.InfoColor, 160, 40)
+        Dim btnCamera = Ui.MakeButton("Camera (F8)", Ui.PrimaryColor, 130, 40)
         Dim scanBar As New FlowLayoutPanel With {.Dock = DockStyle.Top, .Height = 60, .BackColor = Color.White, .Padding = New Padding(8, 4, 8, 4), .WrapContents = False}
         scanBar.Controls.Add(Ui.MakeLabel("Barcode (F2):", True, 12.0F))
         scanBar.Controls.Add(txtScan)
@@ -72,6 +74,7 @@ Public Class PosForm
         scanBar.Controls.Add(numQty)
         scanBar.Controls.Add(btnAdd)
         scanBar.Controls.Add(btnSearch)
+        scanBar.Controls.Add(btnCamera)
 
         ' ---- Cart grid ----
         Ui.StyleGrid(grid)
@@ -157,6 +160,7 @@ Public Class PosForm
         AddHandler txtScan.KeyDown, AddressOf Scan_KeyDown
         AddHandler btnAdd.Click, Sub() ProcessScan()
         AddHandler btnSearch.Click, Sub() SearchProduct("")
+        AddHandler btnCamera.Click, Sub() OpenCamera()
         AddHandler numQty.KeyDown, Sub(s, e)
                                        If e.KeyCode = Keys.Enter Then
                                            e.SuppressKeyPress = True
@@ -221,6 +225,7 @@ Public Class PosForm
         Select Case True
             Case e.KeyCode = Keys.F2 : FocusScan()
             Case e.KeyCode = Keys.F3 : SearchProduct("")
+            Case e.KeyCode = Keys.F8 : OpenCamera()
             Case e.KeyCode = Keys.F4 : SetQtyOfSelected()
             Case e.KeyCode = Keys.F6
                 numDiscount.Focus()
@@ -261,6 +266,24 @@ Public Class PosForm
     End Sub
 
     ' ---------- Scanning ----------
+
+    ''' <summary>Camera scanner window stays open next to the bill; every code read is added.</summary>
+    Private Sub OpenCamera()
+        If cameraForm IsNot Nothing AndAlso Not cameraForm.IsDisposed Then
+            cameraForm.Activate()
+            Return
+        End If
+        cameraForm = New CameraScanForm(continuous:=True)
+        AddHandler cameraForm.BarcodeScanned, Sub(code)
+                                                  txtScan.Text = code
+                                                  ProcessScan()
+                                              End Sub
+        cameraForm.StartPosition = FormStartPosition.Manual
+        Dim area = Screen.FromControl(Me).WorkingArea
+        cameraForm.Size = New Size(520, 440)
+        cameraForm.Location = New Point(area.Right - cameraForm.Width - 20, area.Bottom - cameraForm.Height - 20)
+        cameraForm.Show(Me)
+    End Sub
 
     Private Sub Scan_KeyDown(sender As Object, e As KeyEventArgs)
         If e.KeyCode = Keys.Enter Then

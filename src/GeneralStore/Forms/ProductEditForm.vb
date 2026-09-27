@@ -38,11 +38,12 @@ Public Class ProductEditForm
         numReorder.Value = 5
 
         Dim btnGenerate = Ui.MakeButton("Generate", Ui.InfoColor, 100, 30)
+        Dim btnCamera = Ui.MakeButton("Camera", Ui.PrimaryColor, 90, 30)
         Dim btnAddCategory = Ui.MakeButton("+ New", Ui.SuccessColor, 80, 30)
 
         Dim fields As New FieldTable(130)
-        fields.AddRow("Barcode *", FieldTable.WithButton(txtBarcode, btnGenerate))
-        fields.AddFull(New Label With {.Text = "Scan the product's barcode with the scanner, or click Generate for loose / unbarcoded items.",
+        fields.AddRow("Barcode *", FieldTable.WithButton(txtBarcode, btnCamera, btnGenerate))
+        fields.AddFull(New Label With {.Text = "Scan the product's barcode with the scanner or camera, or click Generate for loose / unbarcoded items.",
                                        .ForeColor = Ui.NeutralColor, .AutoSize = True, .Font = New Font("Segoe UI", 8.5F)})
         fields.AddRow("Product Name *", txtName)
         fields.AddRow("Category", FieldTable.WithButton(cboCategory, btnAddCategory))
@@ -66,6 +67,13 @@ Public Class ProductEditForm
         CancelButton = btnCancel
         ' No AcceptButton on purpose: scanners press Enter after the code, which must not save the form.
 
+        AddHandler btnCamera.Click, Sub()
+                                        Dim code = CameraScanForm.ScanOnce(Me)
+                                        If code IsNot Nothing Then
+                                            txtBarcode.Text = code
+                                            txtName.Focus()
+                                        End If
+                                    End Sub
         AddHandler btnGenerate.Click, Sub()
                                           txtBarcode.Text = BarcodeHelper.GenerateUniqueBarcode()
                                           txtName.Focus()

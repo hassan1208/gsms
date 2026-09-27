@@ -26,8 +26,9 @@ Koi bhi aam **USB ya Bluetooth barcode scanner** chalega. Koi driver ya extra so
 - Agar focus kisi aur jagah ho (grid, button waghera), phir bhi scan barcode box mein hi jata hai.
 - `6*8964000123456` likh kar Enter dabao to ek hi dafa 6 pieces add ho jate hain.
 - **Stock In** aur **Products** screen mein bhi scan kar sakte ho. Product na mile to app naya product banane ka pooch leti hai.
+- **Scanner nahi hai?** Laptop ka camera ya koi bhi USB webcam bhi chalega. POS mein **Camera (F8)** dabao, ek chhoti camera window khulti hai jo har scan kiya hua item bill mein daal deti hai (same item 2 second tak dobara nahi parhta). Product banate waqt aur Stock In mein bhi **Camera** button hai. Barcode ko camera se 10-20 cm door, seedha aur roshni mein rakhein.
 - Har receipt par invoice number ka barcode print hota hai. **Reports** mein us ko scan karo to woh bill foran khul jata hai (reprint ya return ke liye).
-- Barcode images app khud banati hai (Code 128), is liye koi external library nahi chahiye.
+- Barcode images app khud banati hai (Code 128). Camera scanning ke liye FlashCap (camera) aur ZXing.Net (decoding) libraries use hoti hain, jo NuGet se khud aa jati hain.
 
 ## Keyboard shortcuts (POS)
 
@@ -40,6 +41,7 @@ Koi bhi aam **USB ya Bluetooth barcode scanner** chalega. Koi driver ya extra so
 | Del | Selected item remove |
 | F6 | Discount |
 | F7 | Cash received |
+| F8 | Camera se scan |
 | F9 | Sale complete |
 | Ctrl+P | Last receipt reprint |
 | Esc | Close |
@@ -87,6 +89,16 @@ dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=
 
 EXE `bin\Release\net8.0-windows\win-x64\publish\` folder mein milegi. Isay store ke computer par copy karke chala lein.
 
+## Tests
+
+`tests/GeneralStore.Tests` mein automated tests hain: sale save, stock, invoice numbering, discount/profit, udhaar ledger, backup/restore, purane database ki migration, aur yeh ke app ke banaye hue barcodes camera decoder se wapas parhe ja sakte hain. Chalane ke liye:
+
+```bat
+dotnet test GeneralStore.sln
+```
+
+GitHub par har push ke baad yeh tests khud chalte hain.
+
 ## Data kahan save hota hai
 
 Database file: `%LOCALAPPDATA%\GeneralStore\store.db`
@@ -108,9 +120,11 @@ src/GeneralStore/
   Core/Ui.vb              Common styling aur helpers
   Barcode/Code128.vb      Barcode image generator (Code 128)
   Barcode/BarcodeHelper.vb EAN-13 barcode numbers, scanner input helper
+  Barcode/BarcodeDecoder.vb Camera images se barcode parhna (ZXing.Net)
   Services/StoreServices.vb Sale save, stock in, void, reports, customers / udhaar
   Printing/Printing.vb    Receipt aur barcode label printing
-  Forms/                  Saari screens (Login, Main, POS, Products, Stock In, Customers, Reports, Users, Settings)
+  Forms/                  Saari screens (Login, Main, POS, Products, Stock In, Customers, Reports, Users, Settings, Camera)
+tests/GeneralStore.Tests/  Automated tests (xUnit)
 ```
 
 Screens code se bani hain (designer files nahi hain), is liye Visual Studio mein yeh code view mein khulti hain.

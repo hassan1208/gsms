@@ -345,16 +345,18 @@ Public Class FieldTable
         Return ctl
     End Function
 
-    ''' <summary>Puts a control and a button side by side in one cell.</summary>
-    Public Shared Function WithButton(ctl As Control, btn As Button) As Control
-        Dim t As New TableLayoutPanel With {.ColumnCount = 2, .RowCount = 1, .AutoSize = True, .AutoSizeMode = AutoSizeMode.GrowAndShrink, .Margin = New Padding(0)}
+    ''' <summary>Puts a control and one or more buttons side by side in one cell.</summary>
+    Public Shared Function WithButton(ctl As Control, ParamArray buttons As Button()) As Control
+        Dim t As New TableLayoutPanel With {.ColumnCount = 1 + buttons.Length, .RowCount = 1, .AutoSize = True, .AutoSizeMode = AutoSizeMode.GrowAndShrink, .Margin = New Padding(0)}
         t.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100.0F))
-        t.ColumnStyles.Add(New ColumnStyle(SizeType.AutoSize))
         ctl.Dock = DockStyle.Fill
         ctl.Margin = New Padding(0, 2, 4, 0)
-        btn.Margin = New Padding(0)
         t.Controls.Add(ctl, 0, 0)
-        t.Controls.Add(btn, 1, 0)
+        For i = 0 To buttons.Length - 1
+            t.ColumnStyles.Add(New ColumnStyle(SizeType.AutoSize))
+            buttons(i).Margin = New Padding(0, 0, If(i < buttons.Length - 1, 4, 0), 0)
+            t.Controls.Add(buttons(i), i + 1, 0)
+        Next
         Return t
     End Function
 End Class

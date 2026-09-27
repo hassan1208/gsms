@@ -24,10 +24,15 @@ Public Module Db
         End Get
     End Property
 
-    Public Sub Initialize()
-        Dim folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GeneralStore")
-        Directory.CreateDirectory(folder)
-        _databaseFile = Path.Combine(folder, "store.db")
+    ''' <param name="databaseFile">Optional custom location (used by the tests).</param>
+    Public Sub Initialize(Optional databaseFile As String = Nothing)
+        If String.IsNullOrEmpty(databaseFile) Then
+            Dim folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GeneralStore")
+            databaseFile = Path.Combine(folder, "store.db")
+        End If
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(databaseFile)))
+        _databaseFile = Path.GetFullPath(databaseFile)
+        AppSettings.ClearCache()
         _connectionString = New SqliteConnectionStringBuilder With {
             .DataSource = _databaseFile,
             .Mode = SqliteOpenMode.ReadWriteCreate,

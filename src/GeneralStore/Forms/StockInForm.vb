@@ -29,11 +29,13 @@ Public Class StockInForm
 
         Dim scanBar As New FlowLayoutPanel With {.Dock = DockStyle.Top, .Height = 56, .BackColor = Color.White, .Padding = New Padding(8, 4, 8, 4), .WrapContents = False}
         Dim btnFind = Ui.MakeButton("Find by Name (F3)", Ui.InfoColor, 170, 38)
+        Dim btnCamera = Ui.MakeButton("Camera (F8)", Ui.PrimaryColor, 130, 38)
         Dim btnNew = Ui.MakeButton("New Product", Ui.SuccessColor, 130, 38)
         btnNew.Enabled = Session.IsAdmin
         scanBar.Controls.Add(Ui.MakeLabel("Scan Barcode (F2):", True, 11.0F))
         scanBar.Controls.Add(txtScan)
         scanBar.Controls.Add(btnFind)
+        scanBar.Controls.Add(btnCamera)
         scanBar.Controls.Add(btnNew)
 
         Dim fields As New FieldTable(120)
@@ -85,6 +87,7 @@ Public Class StockInForm
                                         End If
                                     End Sub
         AddHandler btnFind.Click, Sub() FindByName()
+        AddHandler btnCamera.Click, Sub() ScanWithCamera()
         AddHandler btnNew.Click, Sub() CreateProduct(txtScan.Text.Trim())
         AddHandler btnSave.Click, Sub() SaveStock()
         AddHandler btnLabels.Click, Sub() PrintLabels()
@@ -111,6 +114,7 @@ Public Class StockInForm
                 txtScan.Focus()
                 txtScan.SelectAll()
             Case Keys.F3 : FindByName()
+            Case Keys.F8 : ScanWithCamera()
             Case Keys.F9 : SaveStock()
             Case Keys.Escape : Close()
             Case Keys.Enter
@@ -142,6 +146,13 @@ Public Class StockInForm
         If Session.IsAdmin AndAlso Ui.Confirm($"No product has barcode '{code}'.{vbCrLf}Create a new product now?") Then
             CreateProduct(code)
         End If
+    End Sub
+
+    Private Sub ScanWithCamera()
+        Dim code = CameraScanForm.ScanOnce(Me)
+        If code Is Nothing Then Return
+        txtScan.Text = code
+        FindByBarcode()
     End Sub
 
     Private Sub FindByName()
